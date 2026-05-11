@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNews } from '../hooks/useNews'
 import { NewsCard } from './NewsCard'
 
-const ALL_SOURCES = ['Bloomberg', 'NYT', 'WSJ', 'FT', 'NPR', 'Hacker News', 'NoahPinion', 'Derek Thompson', 'Marginal Rev', 'JMLR']
+const ALL_SOURCES = ['Bloomberg', 'NYT', 'WSJ', 'FT', 'NPR', 'Hacker News', 'NoahPinion', 'Derek Thompson', 'Marginal Rev', 'NBER', 'JMLR', 'arXiv q-fin', 'arXiv econ']
 const DISMISSED_KEY = 'news-agg:dismissed'
 const MAX_DISMISSED = 500
 

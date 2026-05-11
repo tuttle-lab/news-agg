@@ -11,6 +11,9 @@ const SOURCE_COLORS = {
   'Derek Thompson': '#0891b2',
   'Marginal Rev':   '#16a34a',
   'JMLR':           '#7c3aed',
+  'NBER':           '#1d4ed8',
+  'arXiv q-fin':    '#b45309',
+  'arXiv econ':     '#0f766e',
 }
 
 function timeAgo(published) {

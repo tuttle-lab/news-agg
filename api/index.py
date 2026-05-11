@@ -38,6 +38,9 @@ RSS_FEEDS = {
     "Derek Thompson":"https://derekthompson.substack.com/feed",
     "Marginal Rev":  "http://www.marginalrevolution.com/marginalrevolution/index.rdf",
     "JMLR":          "https://www.jmlr.org/jmlr.xml",
+    "NBER":          "https://www.nber.org/rss/new.xml",
+    "arXiv q-fin":   "https://rss.arxiv.org/rss/q-fin",
+    "arXiv econ":    "https://rss.arxiv.org/rss/econ",
 }
 
 # BTC-USD goes through same Yahoo Finance path as equities
