@@ -89,6 +89,15 @@ code, pre, .mono { font-family: var(--font-mono); }
   min-height: 3rem;
 }
 
+/* ── Daily section cards ───────────────────────────────── */
+.daily-card {
+  transition: border-color 0.15s, background 0.15s;
+}
+.daily-card:hover {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
 /* ── News card dismiss button ──────────────────────────── */
 .dismiss-btn {
   opacity: 0;

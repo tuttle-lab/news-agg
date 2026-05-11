@@ -5,6 +5,12 @@ import httpx
 import feedparser
 import asyncio
 import re
+import os
+import time as _time
+
+# Cache daily data — APOD and Wiki only change once per day
+_daily_cache: tuple[dict, float] | None = None
+_DAILY_TTL = 3600.0
 
 app = FastAPI(
     title="news-agg API",
@@ -142,6 +148,60 @@ async def kalshi():
         del m["liquidity"]  # internal sort key, not needed by client
 
     return {"markets": top, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/daily")
+async def daily():
+    global _daily_cache
+    now = _time.monotonic()
+    if _daily_cache and (now - _daily_cache[1]) < _DAILY_TTL:
+        return _daily_cache[0]
+
+    today = datetime.now(timezone.utc)
+    nasa_key = os.getenv("NASA_API_KEY", "DEMO_KEY")
+    wiki_ua  = "news-agg/1.0 (https://github.com/tuttle-lab/news-agg)"
+
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+        nasa_res, wiki_res = await asyncio.gather(
+            client.get("https://api.nasa.gov/planetary/apod", params={"api_key": nasa_key}),
+            client.get(
+                f"https://en.wikipedia.org/api/rest_v1/feed/featured"
+                f"/{today.year}/{today.month:02d}/{today.day:02d}",
+                headers={"User-Agent": wiki_ua},
+            ),
+            return_exceptions=True,
+        )
+
+    result: dict = {}
+
+    try:
+        d = nasa_res.json()
+        result["apod"] = {
+            "title":       d["title"],
+            "explanation": d["explanation"][:500],
+            "image_url":   d["url"] if d.get("media_type") == "image" else None,
+            "hd_url":      d.get("hdurl"),
+            "media_type":  d.get("media_type", "image"),
+            "date":        d["date"],
+            "link":        "https://apod.nasa.gov/apod/astropix.html",
+        }
+    except Exception:
+        result["apod"] = None
+
+    try:
+        tfa = wiki_res.json().get("tfa", {})
+        result["wiki"] = {
+            "title":     tfa.get("normalizedtitle") or tfa.get("title", ""),
+            "extract":   tfa.get("extract", "")[:400],
+            "url":       tfa.get("content_urls", {}).get("desktop", {}).get("page", ""),
+            "thumbnail": (tfa.get("thumbnail") or {}).get("source"),
+        }
+    except Exception:
+        result["wiki"] = None
+
+    result["date"] = today.strftime("%B %d, %Y")
+    _daily_cache = (result, now)
+    return result
 
 
 @app.get("/api/news")
