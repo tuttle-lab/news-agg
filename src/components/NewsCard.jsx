@@ -10,10 +10,9 @@ export const SOURCE_COLORS = {
   'NoahPinion':     '#4f46e5',
   'Derek Thompson': '#0891b2',
   'Marginal Rev':   '#16a34a',
-  'JMLR':           '#7c3aed',
   'NBER':           '#1d4ed8',
+  'arXiv ML':       '#7c3aed',
   'arXiv q-fin':    '#b45309',
-  'arXiv econ':     '#0f766e',
 }
 
 function timeAgo(published) {
@@ -29,43 +28,78 @@ function timeAgo(published) {
 }
 
 const SWIPE_THRESHOLD = 72
+const MIN_TRAVEL      = 12
+const HORIZ_RATIO     = 3
 
-export function NewsCard({ article, onDismiss, onOpen }) {
+export function NewsCard({ article, onDismiss, onSave, onOpen }) {
   const color = SOURCE_COLORS[article.source] || 'var(--accent)'
-  const touchStartX = useRef(null)
-  const touchMoved  = useRef(false)
-  const [offsetX, setOffsetX]     = useState(0)
+  const startX  = useRef(null)
+  const startY  = useRef(null)
+  const axis    = useRef(null)
+  const tapped  = useRef(true)
+  const [offsetX, setOffsetX]       = useState(0)
   const [dismissing, setDismissing] = useState(false)
 
-  function dismiss() {
+  function triggerDismiss() {
     setDismissing(true)
     setTimeout(onDismiss, 220)
   }
+  function triggerSave() {
+    setDismissing(true)
+    setTimeout(() => { onSave(article); onDismiss() }, 220)
+  }
 
   function onTouchStart(e) {
-    touchStartX.current = e.touches[0].clientX
-    touchMoved.current  = false
-  }
-  function onTouchMove(e) {
-    if (touchStartX.current === null) return
-    const dx = e.touches[0].clientX - touchStartX.current
-    if (Math.abs(dx) > 8) touchMoved.current = true
-    setOffsetX(dx)
-  }
-  function onTouchEnd(e) {
-    if (Math.abs(offsetX) >= SWIPE_THRESHOLD) {
-      dismiss()
-    } else if (!touchMoved.current) {
-      // Treat as tap → open modal, prevent ghost click
-      e.preventDefault()
-      onOpen()
-    }
+    startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
+    axis.current   = null
+    tapped.current = true
     setOffsetX(0)
-    touchStartX.current = null
   }
 
+  function onTouchMove(e) {
+    if (startX.current === null) return
+    const dx   = e.touches[0].clientX - startX.current
+    const dy   = e.touches[0].clientY - startY.current
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    if (!axis.current) {
+      if (dist < MIN_TRAVEL) return
+      axis.current = Math.abs(dx) > Math.abs(dy) * HORIZ_RATIO ? 'h' : 'v'
+    }
+
+    if (axis.current === 'h') {
+      e.preventDefault()
+      tapped.current = false
+      setOffsetX(dx)
+    }
+  }
+
+  function onTouchEnd(e) {
+    if (tapped.current && axis.current !== 'h') {
+      e.preventDefault()
+      onOpen()
+    } else if (axis.current === 'h') {
+      if (offsetX >= SWIPE_THRESHOLD) {
+        triggerSave()
+      } else if (offsetX <= -SWIPE_THRESHOLD) {
+        triggerDismiss()
+      } else {
+        setOffsetX(0)
+      }
+    } else {
+      setOffsetX(0)
+    }
+    startX.current = null
+    axis.current   = null
+  }
+
+  const isSwiping  = axis.current === 'h' && Math.abs(offsetX) > 8
+  const swipeRight = offsetX > 0
+  const hintAlpha  = Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1) * 0.5
+
   const opacity = dismissing ? 0 : Math.max(0, 1 - Math.abs(offsetX) / 200)
-  const tx      = dismissing ? (offsetX >= 0 ? 120 : -120) : offsetX
+  const tx      = dismissing ? (offsetX >= 0 ? 140 : -140) : offsetX
 
   return (
     <div
@@ -83,7 +117,7 @@ export function NewsCard({ article, onDismiss, onOpen }) {
       onTouchEnd={onTouchEnd}
     >
       <button
-        onClick={e => { e.stopPropagation(); dismiss() }}
+        onClick={e => { e.stopPropagation(); triggerDismiss() }}
         className="dismiss-btn"
         aria-label="Dismiss"
         style={{
@@ -106,8 +140,26 @@ export function NewsCard({ article, onDismiss, onOpen }) {
           padding: '0.85rem 2rem 0.85rem 1rem',
           display: 'flex', flexDirection: 'column', gap: '0.35rem',
           cursor: 'pointer',
+          overflow: 'hidden',
+          position: 'relative',
         }}
       >
+        {/* Swipe color overlay */}
+        {isSwiping && (
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
+            background: swipeRight
+              ? `rgba(34,197,94,${hintAlpha})`
+              : `rgba(239,68,68,${hintAlpha})`,
+            display: 'flex', alignItems: 'center',
+            justifyContent: swipeRight ? 'flex-start' : 'flex-end',
+            padding: '0 1rem',
+            borderRadius: 'var(--radius)',
+          }}>
+            <span style={{ fontSize: '1.2rem' }}>{swipeRight ? '★' : '✕'}</span>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{
             background: color, color: '#fff',

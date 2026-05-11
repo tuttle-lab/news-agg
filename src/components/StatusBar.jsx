@@ -1,5 +1,7 @@
+/* global __APP_VERSION__ */
+
 export function StatusBar({ theme }) {
-  const now = new Date().toISOString()
+  const now = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   return (
     <footer style={{
       borderTop: '1px solid var(--border)',
@@ -13,7 +15,7 @@ export function StatusBar({ theme }) {
         color: 'var(--text-muted)',
         fontFamily: 'var(--font-mono)',
       }}>
-        <span>KICKSTART v0.1.0</span>
+        <span>NEWS-AGG v{__APP_VERSION__} · tuttle-lab</span>
         <span>theme:{theme} · {now}</span>
       </div>
     </footer>

@@ -70,11 +70,22 @@ export function KalshiModal({ market, onClose }) {
           </button>
         </div>
 
-        {/* Probability bars */}
+        {/* Single implied probability bar */}
         {yesPct != null && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <ProbBar label="YES" pct={yesPct} color="var(--success)" />
-            {noPct != null && <ProbBar label="NO" pct={noPct} color="var(--error)" />}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>Implied probability</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: yesPct >= 66 ? 'var(--success)' : yesPct >= 34 ? '#f59e0b' : 'var(--error)' }}>
+                {yesPct}%
+              </span>
+            </div>
+            <div style={{ height: '8px', background: 'var(--bg-elevated)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${yesPct}%`, height: '100%', borderRadius: '4px',
+                background: yesPct >= 66 ? 'var(--success)' : yesPct >= 34 ? '#f59e0b' : 'var(--error)',
+                transition: 'width 0.3s',
+              }} />
+            </div>
           </div>
         )}
 

@@ -60,7 +60,7 @@ const secondaryBtn = {
   fontFamily: 'inherit',
 }
 
-export function ArticleModal({ article, onClose, primaryLabel, secondaryLabel }) {
+export function ArticleModal({ article, onClose, primaryLabel, secondaryLabel, isSaved, onSave, onUnsave }) {
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -182,8 +182,20 @@ export function ArticleModal({ article, onClose, primaryLabel, secondaryLabel })
 
         {/* Share / save row */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {onSave && (
+            <button
+              onClick={isSaved ? onUnsave : onSave}
+              style={{
+                ...secondaryBtn,
+                color: isSaved ? '#f59e0b' : 'var(--text-muted)',
+                borderColor: isSaved ? '#f59e0b' : 'var(--border)',
+              }}
+            >
+              {isSaved ? '★ Saved' : '☆ Save'}
+            </button>
+          )}
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginRight: '0.2rem' }}>
-            Save to
+            Export
           </span>
           <CopyButton text={mdLink} label="Copy [[md]]" />
           <a

@@ -8,13 +8,16 @@ import re
 import os
 import time as _time
 
+VERSION  = "0.4.0"
+_startup = _time.monotonic()
+
 # Cache daily data — APOD and Wiki only change once per day
 _daily_cache: tuple[dict, float] | None = None
 _DAILY_TTL = 3600.0
 
 app = FastAPI(
     title="news-agg API",
-    version="0.1.0",
+    version=VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
@@ -30,9 +33,8 @@ app.add_middleware(
 # Per-source entry caps — academic feeds can drop 70+ papers at once
 SOURCE_LIMITS = {
     "NBER":        5,
-    "JMLR":        5,
+    "arXiv ML":    6,
     "arXiv q-fin": 6,
-    "arXiv econ":  6,
 }
 DEFAULT_SOURCE_LIMIT = 12
 
@@ -46,22 +48,21 @@ RSS_FEEDS = {
     "NoahPinion":    "https://noahpinion.substack.com/feed",
     "Derek Thompson":"https://derekthompson.substack.com/feed",
     "Marginal Rev":  "http://www.marginalrevolution.com/marginalrevolution/index.rdf",
-    "JMLR":          "https://www.jmlr.org/jmlr.xml",
     "NBER":          "https://www.nber.org/rss/new.xml",
+    "arXiv ML":      "https://rss.arxiv.org/rss/cs.LG",
     "arXiv q-fin":   "https://rss.arxiv.org/rss/q-fin",
-    "arXiv econ":    "https://rss.arxiv.org/rss/econ",
 }
 
 # BTC-USD goes through same Yahoo Finance path as equities
 STOCK_SYMBOLS = ["SPY", "VOO", "JPM", "NVDA", "BTC-USD"]
 
 PODCASTS = [
-    {"name": "Odd Lots",          "rss": "https://feeds.simplecast.com/WBWmS_GU",          "spotify": "https://open.spotify.com/show/7BuQbpSBfwlhUbC9eOzpLw"},
+    {"name": "Odd Lots",          "rss": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/982f5071-765c-403d-969d-ae27003a8d83/podcast.rss", "spotify": "https://open.spotify.com/show/7BuQbpSBfwlhUbC9eOzpLw"},
     {"name": "Ezra Klein",        "rss": "https://rss.art19.com/the-ezra-klein-show",       "spotify": "https://open.spotify.com/show/3oB5noYIwEB2dMAREj2F7S"},
-    {"name": "Dwarkesh",          "rss": "https://www.dwarkeshpatel.com/podcast/rss",       "spotify": "https://open.spotify.com/show/3PM2bAqoEKGOHaADv5ZUSY"},
-    {"name": "EconTalk",          "rss": "https://www.econtalk.org/feed/",                 "spotify": "https://open.spotify.com/show/7fYCX0GasGDyz6EvMvbYQX"},
-    {"name": "Money Stuff",       "rss": "https://feeds.megaphone.fm/money-stuff-the-podcast","spotify": "https://open.spotify.com/show/4PKxjMKMR4gK3Jcm5FJALz"},
-    {"name": "Eye on the Market", "rss": "https://feeds.simplecast.com/JPM5762513472",      "spotify": "https://open.spotify.com/show/0kKMECGBMHIHeJrGnNNL5f"},
+    {"name": "Dwarkesh",          "rss": "https://api.substack.com/feed/podcast/69345.rss", "spotify": "https://open.spotify.com/show/3PM2bAqoEKGOHaADv5ZUSY"},
+    {"name": "EconTalk",          "rss": "https://feeds.simplecast.com/wgl4xEgL",           "spotify": "https://open.spotify.com/show/7fYCX0GasGDyz6EvMvbYQX"},
+    {"name": "Money Stuff",       "rss": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/ee4336cb-155f-4488-90e0-b1400134e40e/77e6a3a7-290d-4a82-8164-b14001353ef2/podcast.rss", "spotify": "https://open.spotify.com/show/4PKxjMKMR4gK3Jcm5FJALz"},
+    {"name": "Eye on the Market", "rss": "https://feed.podbean.com/eyeonthemarket/feed.xml","spotify": "https://open.spotify.com/show/0kKMECGBMHIHeJrGnNNL5f"},
     {"name": "Huberman Lab",      "rss": "https://feeds.megaphone.fm/hubermanlab",          "spotify": "https://open.spotify.com/show/79CkJF3UJTHFV8Dse3Oy0P"},
 ]
 
@@ -73,9 +74,21 @@ KALSHI_TOP_N = 5
 @app.get("/api/ping")
 def ping():
     return {
-        "status": "ok",
+        "status":    "ok",
+        "version":   VERSION,
+        "uptime_s":  round(_time.monotonic() - _startup, 1),
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "service": "news-agg-api",
+        "service":   "news-agg-api",
+    }
+
+
+@app.get("/api/config")
+def config():
+    return {
+        "version":    VERSION,
+        "rss_feeds":  list(RSS_FEEDS.keys()),
+        "podcasts":   [{"name": p["name"], "rss": p["rss"]} for p in PODCASTS],
+        "tickers":    STOCK_SYMBOLS,
     }
 
 
@@ -182,7 +195,7 @@ async def podcasts():
                 res = await client.get(pod["rss"], headers={"User-Agent": "Mozilla/5.0"})
             feed = feedparser.parse(res.text)
             episodes = []
-            for entry in feed.entries[:5]:
+            for entry in feed.entries[:3]:
                 duration = (
                     entry.get("itunes_duration")
                     or entry.get("duration")
@@ -209,6 +222,36 @@ async def podcasts():
     order = {p["name"]: i for i, p in enumerate(PODCASTS)}
     results.sort(key=lambda r: order.get(r["name"], 99))
     return {"podcasts": results, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/chart/{symbol}")
+async def chart(symbol: str):
+    safe = symbol.upper().replace("-", "-")
+    yf_sym = "BTC-USD" if safe == "BTC" else safe
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            res = await client.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{yf_sym}",
+                params={"interval": "1h", "range": "5d"},
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+        data = res.json()["chart"]["result"][0]
+        meta       = data["meta"]
+        timestamps = data.get("timestamp", [])
+        closes     = data["indicators"]["quote"][0].get("close", [])
+        points = [
+            {"t": t, "v": round(c, 2) if c is not None else None}
+            for t, c in zip(timestamps, closes)
+            if c is not None
+        ]
+        return {
+            "symbol":    safe,
+            "currency":  meta.get("currency", "USD"),
+            "points":    points,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as exc:
+        return {"symbol": safe, "error": str(exc), "points": []}
 
 
 @app.get("/api/daily")

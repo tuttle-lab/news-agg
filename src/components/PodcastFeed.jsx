@@ -2,6 +2,18 @@ import { useState } from 'react'
 import { usePodcasts } from '../hooks/usePodcasts'
 import { ArticleModal } from './ArticleModal'
 
+const SHOW_COLORS = {
+  'Odd Lots':          '#f59e0b',
+  'Ezra Klein':        '#6366f1',
+  'Dwarkesh':          '#0ea5e9',
+  'EconTalk':          '#16a34a',
+  'Money Stuff':       '#dc2626',
+  'Eye on the Market': '#1d4ed8',
+  'Huberman Lab':      '#7c3aed',
+}
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+
 function formatDuration(raw) {
   if (!raw) return ''
   // Handle HH:MM:SS or MM:SS
@@ -41,7 +53,7 @@ function EpisodeCard({ episode, show, onClick }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <span style={{
-          background: '#1db954', color: '#fff',
+          background: SHOW_COLORS[show.name] || '#1db954', color: '#fff',
           fontSize: '0.62rem', fontWeight: 700,
           letterSpacing: '0.06em', padding: '0.1rem 0.4rem',
           borderRadius: '2px', textTransform: 'uppercase', flexShrink: 0,
@@ -71,9 +83,15 @@ export function PodcastFeed() {
 
   const showNames = podcasts.map(p => p.name)
 
+  const cutoff = Date.now() - THIRTY_DAYS_MS
+
   const allEpisodes = podcasts
     .filter(p => filter === 'All' || p.name === filter)
     .flatMap(p => p.episodes.map(ep => ({ ...ep, show: p })))
+    .filter(ep => {
+      try { return new Date(ep.published).getTime() >= cutoff }
+      catch { return true }
+    })
 
   // Sort by published date
   allEpisodes.sort((a, b) => {

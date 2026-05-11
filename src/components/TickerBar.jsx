@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTickers } from '../hooks/useTickers'
 import { useKalshi } from '../hooks/useKalshi'
 import { KalshiModal } from './KalshiModal'
+import { ChartModal } from './ChartModal'
 
 const TICKER_ORDER = ['SPY', 'VOO', 'JPM', 'NVDA', 'BTC']
 
@@ -56,6 +57,7 @@ export function TickerBar() {
   const { data: tickerData } = useTickers()
   const { data: kalshiData  } = useKalshi()
   const [activeMarket, setActiveMarket] = useState(null)
+  const [chartSymbol, setChartSymbol]   = useState(null)
 
   const tickers = tickerData?.tickers ?? {}
   const markets = kalshiData?.markets ?? []
@@ -63,7 +65,18 @@ export function TickerBar() {
   const stockItems = TICKER_ORDER
     .filter(sym => tickers[sym])
     .map(sym => (
-      <TickerItem key={sym} label={sym} value={tickers[sym].price} changePct={tickers[sym].change_pct} />
+      <button
+        key={sym}
+        onClick={() => setChartSymbol(sym)}
+        style={{
+          display: 'inline-flex', alignItems: 'center',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit',
+          height: '100%', padding: 0,
+        }}
+      >
+        <TickerItem label={sym} value={tickers[sym].price} changePct={tickers[sym].change_pct} />
+      </button>
     ))
 
   const kalshiItems = markets.map(m => (
@@ -104,6 +117,9 @@ export function TickerBar() {
 
       {activeMarket && (
         <KalshiModal market={activeMarket} onClose={() => setActiveMarket(null)} />
+      )}
+      {chartSymbol && (
+        <ChartModal symbol={chartSymbol} onClose={() => setChartSymbol(null)} />
       )}
     </>
   )
