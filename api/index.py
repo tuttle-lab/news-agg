@@ -55,6 +55,16 @@ RSS_FEEDS = {
 # BTC-USD goes through same Yahoo Finance path as equities
 STOCK_SYMBOLS = ["SPY", "VOO", "JPM", "NVDA", "BTC-USD"]
 
+PODCASTS = [
+    {"name": "Odd Lots",          "rss": "https://feeds.simplecast.com/WBWmS_GU",          "spotify": "https://open.spotify.com/show/7BuQbpSBfwlhUbC9eOzpLw"},
+    {"name": "Ezra Klein",        "rss": "https://rss.art19.com/the-ezra-klein-show",       "spotify": "https://open.spotify.com/show/3oB5noYIwEB2dMAREj2F7S"},
+    {"name": "Dwarkesh",          "rss": "https://www.dwarkeshpatel.com/podcast/rss",       "spotify": "https://open.spotify.com/show/3PM2bAqoEKGOHaADv5ZUSY"},
+    {"name": "EconTalk",          "rss": "https://www.econtalk.org/feed/",                 "spotify": "https://open.spotify.com/show/7fYCX0GasGDyz6EvMvbYQX"},
+    {"name": "Money Stuff",       "rss": "https://feeds.megaphone.fm/money-stuff-the-podcast","spotify": "https://open.spotify.com/show/4PKxjMKMR4gK3Jcm5FJALz"},
+    {"name": "Eye on the Market", "rss": "https://feeds.simplecast.com/JPM5762513472",      "spotify": "https://open.spotify.com/show/0kKMECGBMHIHeJrGnNNL5f"},
+    {"name": "Huberman Lab",      "rss": "https://feeds.megaphone.fm/hubermanlab",          "spotify": "https://open.spotify.com/show/79CkJF3UJTHFV8Dse3Oy0P"},
+]
+
 KALSHI_BASE = "https://external-api.kalshi.com/trade-api/v2"
 KALSHI_SKIP = {"Sports"}
 KALSHI_TOP_N = 5
@@ -160,6 +170,45 @@ async def kalshi():
         del m["liquidity"]  # internal sort key, not needed by client
 
     return {"markets": top, "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/api/podcasts")
+async def podcasts():
+    results = []
+
+    async def fetch_podcast(pod: dict):
+        try:
+            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                res = await client.get(pod["rss"], headers={"User-Agent": "Mozilla/5.0"})
+            feed = feedparser.parse(res.text)
+            episodes = []
+            for entry in feed.entries[:5]:
+                duration = (
+                    entry.get("itunes_duration")
+                    or entry.get("duration")
+                    or ""
+                )
+                summary = re.sub(r"<[^>]+>", "", entry.get("summary", "") or "")[:800].strip()
+                episodes.append({
+                    "title":     entry.get("title", ""),
+                    "summary":   summary,
+                    "published": entry.get("published") or entry.get("updated", ""),
+                    "duration":  str(duration),
+                    "url":       entry.get("link", ""),
+                })
+            results.append({
+                "name":     pod["name"],
+                "spotify":  pod["spotify"],
+                "episodes": episodes,
+            })
+        except Exception:
+            results.append({"name": pod["name"], "spotify": pod["spotify"], "episodes": []})
+
+    await asyncio.gather(*[fetch_podcast(p) for p in PODCASTS])
+    # Preserve config order
+    order = {p["name"]: i for i, p in enumerate(PODCASTS)}
+    results.sort(key=lambda r: order.get(r["name"], 99))
+    return {"podcasts": results, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/api/daily")

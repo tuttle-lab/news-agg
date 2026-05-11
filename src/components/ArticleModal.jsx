@@ -60,16 +60,18 @@ const secondaryBtn = {
   fontFamily: 'inherit',
 }
 
-export function ArticleModal({ article, onClose }) {
+export function ArticleModal({ article, onClose, primaryLabel, secondaryLabel }) {
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const color = SOURCE_COLORS[article.source] || 'var(--accent)'
+  const color = SOURCE_COLORS[article.source] || '#1db954'
   const isHN  = article.source === 'Hacker News'
-  const hasDistinctArticle = article.article_url && article.article_url !== article.url
+  const hasDistinctArticle = secondaryLabel
+    ? (article.article_url && article.article_url !== article.url)
+    : (article.article_url && article.article_url !== article.url)
 
   const mdLink      = `[${article.title}](${article.url})`
   const obsidianUrl = `obsidian://new?vault=${encodeURIComponent(OBSIDIAN_VAULT)}&name=${encodeURIComponent(article.title)}&content=${encodeURIComponent(`# ${article.title}\n\nSource: ${article.source}\nURL: ${article.url}\n\n${article.summary || ''}`)}`
@@ -164,7 +166,7 @@ export function ArticleModal({ article, onClose }) {
               textDecoration: 'none',
             }}
           >
-            {isHN ? 'HN Discussion →' : 'Read article →'}
+            {primaryLabel || (isHN ? 'HN Discussion →' : 'Read article →')}
           </a>
           {hasDistinctArticle && (
             <a
@@ -173,7 +175,7 @@ export function ArticleModal({ article, onClose }) {
               rel="noopener noreferrer"
               style={{ ...secondaryBtn, textDecoration: 'none' }}
             >
-              Original article →
+              {secondaryLabel || 'Original article →'}
             </a>
           )}
         </div>
