@@ -20,7 +20,7 @@ code, pre, .mono { font-family: var(--font-mono); }
 
 /* ── Layout primitives ─────────────────────────────────── */
 .container {
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -87,6 +87,28 @@ code, pre, .mono { font-family: var(--font-mono); }
   white-space: pre-wrap;
   color: var(--text);
   min-height: 3rem;
+}
+
+/* ── Ticker tape scroll ────────────────────────────────── */
+.ticker-scroll {
+  width: 100%;
+  overflow: hidden;
+}
+
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  animation: ticker-move 60s linear infinite;
+  white-space: nowrap;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-move {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* ── Amber glow effect on interactive elements ─────────── */

@@ -3,33 +3,13 @@
 #   ./scripts/setup.sh
 
 project:
-  name: kickstart
-  github_repo: tuttle-lab/kickstart
+  name: news-agg
+  github_repo: tuttle-lab/news-agg
 
 # ── Deployment strategy ─────────────────────────────────────
-# Choose ONE primary deployment target.
-#
-# VERCEL (recommended for most projects)
-#   ✓ Hosts frontend + FastAPI backend in one deployment
-#   ✓ Single canonical URL for everything
-#   ✓ /docs and /redoc (Swagger) available
-#   ✓ Serverless Python functions, zero infra
-#   ✗ Requires a Vercel account
-#
-# GITHUB PAGES (static-only projects)
-#   ✓ Free, zero account setup beyond GitHub
-#   ✓ Good for pure frontend apps with no backend
-#   ✗ Static only — cannot run FastAPI
-#   ✗ API calls must point to an external URL (Vercel or other)
-#   ✗ /docs and /redoc not available
-#   ✗ Two URLs to manage if used alongside Vercel
-#
-# Recommendation: use Vercel as primary. Keep the GitHub Actions
-# workflow in the repo as a fallback or for static-only forks.
-
 deployment:
-  vercel_production_url: https://kickstart-xi-eight.vercel.app
-  github_pages_base_path: /kickstart/
+  vercel_production_url: https://news-agg.vercel.app
+  github_pages_base_path: /news-agg/
 
 # ── Database ────────────────────────────────────────────────
 # Safe to commit: url and anon key are public-facing.
