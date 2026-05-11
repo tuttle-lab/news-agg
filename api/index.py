@@ -22,11 +22,16 @@ app.add_middleware(
 )
 
 RSS_FEEDS = {
-    "Bloomberg":   "https://feeds.bloomberg.com/markets/news.rss",
-    "NYT":         "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-    "WSJ":         "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
-    "FT":          "https://www.ft.com/rss/home",
-    "Hacker News": "https://news.ycombinator.com/rss",
+    "Bloomberg":     "https://feeds.bloomberg.com/markets/news.rss",
+    "NYT":           "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+    "WSJ":           "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    "FT":            "https://www.ft.com/rss/home",
+    "NPR":           "http://www.npr.org/rss/rss.php?id=1019",
+    "Hacker News":   "https://news.ycombinator.com/rss",
+    "NoahPinion":    "https://noahpinion.substack.com/feed",
+    "Derek Thompson":"https://derekthompson.substack.com/feed",
+    "Marginal Rev":  "http://www.marginalrevolution.com/marginalrevolution/index.rdf",
+    "JMLR":          "https://www.jmlr.org/jmlr.xml",
 }
 
 # BTC-USD goes through same Yahoo Finance path as equities

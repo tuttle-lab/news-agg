@@ -1,11 +1,16 @@
 import { useRef, useState } from 'react'
 
 const SOURCE_COLORS = {
-  'Bloomberg':   '#000000',
-  'NYT':         '#000000',
-  'WSJ':         '#004276',
-  'FT':          '#c9a227',
-  'Hacker News': '#ff6600',
+  'Bloomberg':      '#000000',
+  'NYT':            '#000000',
+  'WSJ':            '#004276',
+  'FT':             '#c9a227',
+  'NPR':            '#c80000',
+  'Hacker News':    '#ff6600',
+  'NoahPinion':     '#4f46e5',
+  'Derek Thompson': '#0891b2',
+  'Marginal Rev':   '#16a34a',
+  'JMLR':           '#7c3aed',
 }
 
 function timeAgo(published) {
