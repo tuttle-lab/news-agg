@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useTickers } from '../hooks/useTickers'
 import { useKalshi } from '../hooks/useKalshi'
+import { KalshiModal } from './KalshiModal'
 
 const TICKER_ORDER = ['SPY', 'VOO', 'JPM', 'NVDA', 'BTC']
 
 function TickerItem({ label, value, changePct }) {
-  const up = changePct > 0
+  const up   = changePct > 0
   const down = changePct < 0
   const color = up ? 'var(--success)' : down ? 'var(--error)' : 'var(--text-muted)'
   const arrow = up ? '▲' : down ? '▼' : '●'
@@ -27,29 +29,33 @@ function TickerItem({ label, value, changePct }) {
   )
 }
 
-function KalshiItem({ market }) {
+function KalshiItem({ market, onClick }) {
   const pct = market.yes_price != null ? Math.round(market.yes_price * 100) : null
   return (
-    <a
-      href={market.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ textDecoration: 'none', color: 'inherit' }}
+    <button
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+        padding: '0 1.2rem', borderRight: '1px solid var(--border)',
+        whiteSpace: 'nowrap', background: 'none', border: 'none',
+        borderRight: '1px solid var(--border)',
+        cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit',
+        height: '100%',
+      }}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0 1.2rem', borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-        <span style={{ color: 'var(--accent)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em' }}>KALSHI</span>
-        <span style={{ fontSize: '0.8rem' }}>{market.title}</span>
-        {pct != null && (
-          <span style={{ fontWeight: 700, color: pct > 50 ? 'var(--success)' : 'var(--text-muted)' }}>{pct}¢</span>
-        )}
-      </span>
-    </a>
+      <span style={{ color: 'var(--accent)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em' }}>KALSHI</span>
+      <span style={{ fontSize: '0.8rem' }}>{market.title}</span>
+      {pct != null && (
+        <span style={{ fontWeight: 700, color: pct > 50 ? 'var(--success)' : 'var(--text-muted)' }}>{pct}¢</span>
+      )}
+    </button>
   )
 }
 
 export function TickerBar() {
   const { data: tickerData } = useTickers()
-  const { data: kalshiData } = useKalshi()
+  const { data: kalshiData  } = useKalshi()
+  const [activeMarket, setActiveMarket] = useState(null)
 
   const tickers = tickerData?.tickers ?? {}
   const markets = kalshiData?.markets ?? []
@@ -60,38 +66,45 @@ export function TickerBar() {
       <TickerItem key={sym} label={sym} value={tickers[sym].price} changePct={tickers[sym].change_pct} />
     ))
 
-  const kalshiItems = markets.map(m => <KalshiItem key={m.ticker} market={m} />)
+  const kalshiItems = markets.map(m => (
+    <KalshiItem key={m.ticker} market={m} onClick={() => setActiveMarket(m)} />
+  ))
 
   const empty = stockItems.length === 0 && kalshiItems.length === 0
-
   const items = <>{stockItems}{kalshiItems}</>
 
   return (
-    <div style={{
-      position: 'sticky',
-      top: '2.75rem',
-      zIndex: 100,
-      background: 'var(--bg-elevated)',
-      borderBottom: '1px solid var(--border)',
-      overflow: 'hidden',
-      height: '2.2rem',
-      display: 'flex',
-      alignItems: 'center',
-      fontFamily: 'var(--font-mono)',
-      fontSize: '0.82rem',
-    }}>
-      {empty ? (
-        <span style={{ padding: '0 1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-          Loading market data…
-        </span>
-      ) : (
-        <div className="ticker-scroll">
-          <div className="ticker-track">
-            {items}
-            {items}
+    <>
+      <div style={{
+        position: 'sticky',
+        top: '2.75rem',
+        zIndex: 100,
+        background: 'var(--bg-elevated)',
+        borderBottom: '1px solid var(--border)',
+        overflow: 'hidden',
+        height: '2.2rem',
+        display: 'flex',
+        alignItems: 'center',
+        fontFamily: 'var(--font-mono)',
+        fontSize: '0.82rem',
+      }}>
+        {empty ? (
+          <span style={{ padding: '0 1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+            Loading market data…
+          </span>
+        ) : (
+          <div className="ticker-scroll">
+            <div className="ticker-track">
+              {items}
+              {items}
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {activeMarket && (
+        <KalshiModal market={activeMarket} onClose={() => setActiveMarket(null)} />
       )}
-    </div>
+    </>
   )
 }

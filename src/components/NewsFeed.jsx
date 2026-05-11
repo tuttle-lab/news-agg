@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNews } from '../hooks/useNews'
 import { NewsCard } from './NewsCard'
 
-const ALL_SOURCES = ['Reuters', 'AP', 'Bloomberg', 'FT', 'Hacker News']
+const ALL_SOURCES = ['Bloomberg', 'NYT', 'WSJ', 'FT', 'Hacker News']
 const DISMISSED_KEY = 'news-agg:dismissed'
 const MAX_DISMISSED = 500
 
@@ -12,58 +12,56 @@ function loadDismissed() {
 }
 
 function saveDismissed(set) {
-  const arr = [...set].slice(-MAX_DISMISSED)
-  localStorage.setItem(DISMISSED_KEY, JSON.stringify(arr))
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...set].slice(-MAX_DISMISSED)))
 }
 
 export function NewsFeed() {
   const { articles, loading, error } = useNews()
-  const [active, setActive] = useState('All')
+  const [active, setActive]       = useState('All')
   const [dismissed, setDismissed] = useState(loadDismissed)
 
   useEffect(() => { saveDismissed(dismissed) }, [dismissed])
 
   function dismiss(url) {
-    setDismissed(prev => {
-      const next = new Set(prev)
-      next.add(url)
-      return next
-    })
+    setDismissed(prev => new Set([...prev, url]))
   }
 
-  const sources = ['All', ...ALL_SOURCES]
-  const visible = articles.filter(a => !dismissed.has(a.url))
+  const visible  = articles.filter(a => !dismissed.has(a.url))
   const filtered = active === 'All' ? visible : visible.filter(a => a.source === active)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {sources.map(s => (
-          <button
-            key={s}
-            onClick={() => setActive(s)}
+      {/* Controls row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Source</span>
+          <select
+            value={active}
+            onChange={e => setActive(e.target.value)}
             style={{
-              padding: '0.3rem 0.8rem',
-              borderRadius: '999px',
+              background: 'var(--bg-surface)',
+              color: 'var(--text)',
               border: '1px solid var(--border)',
-              background: active === s ? 'var(--accent)' : 'var(--bg-surface)',
-              color: active === s ? '#fff' : 'var(--text)',
-              fontSize: '0.78rem',
-              fontWeight: 600,
+              borderRadius: 'var(--radius)',
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.82rem',
+              fontFamily: 'var(--font-sans)',
               cursor: 'pointer',
-              transition: 'background 0.15s',
+              outline: 'none',
             }}
           >
-            {s}
-          </button>
-        ))}
+            <option value="All">All sources</option>
+            {ALL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+
         {dismissed.size > 0 && (
           <button
             onClick={() => setDismissed(new Set())}
             style={{
               marginLeft: 'auto',
-              padding: '0.3rem 0.8rem',
-              borderRadius: '999px',
+              padding: '0.3rem 0.75rem',
+              borderRadius: 'var(--radius)',
               border: '1px solid var(--border)',
               background: 'transparent',
               color: 'var(--text-muted)',
@@ -82,9 +80,7 @@ export function NewsFeed() {
         </div>
       )}
       {error && (
-        <div style={{ color: 'var(--error)', padding: '1rem' }}>
-          Error: {error}
-        </div>
+        <div style={{ color: 'var(--error)', padding: '1rem' }}>Error: {error}</div>
       )}
       {!loading && filtered.length === 0 && !error && (
         <div style={{ color: 'var(--text-muted)', padding: '2rem 0', textAlign: 'center' }}>
@@ -98,11 +94,7 @@ export function NewsFeed() {
         gap: '0.75rem',
       }}>
         {filtered.map((a, i) => (
-          <NewsCard
-            key={`${a.url}-${i}`}
-            article={a}
-            onDismiss={() => dismiss(a.url)}
-          />
+          <NewsCard key={`${a.url}-${i}`} article={a} onDismiss={() => dismiss(a.url)} />
         ))}
       </div>
     </div>

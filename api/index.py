@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import httpx
 import feedparser
 import asyncio
+import re
 
 app = FastAPI(
     title="news-agg API",
@@ -21,17 +22,19 @@ app.add_middleware(
 )
 
 RSS_FEEDS = {
-    "Reuters":      "https://feeds.reuters.com/reuters/topNews",
-    "AP":           "https://feeds.apnews.com/rss/apf-topnews",
-    "Bloomberg":    "https://feeds.bloomberg.com/markets/news.rss",
-    "FT":           "https://www.ft.com/rss/home",
-    "Hacker News":  "https://news.ycombinator.com/rss",
+    "Bloomberg":   "https://feeds.bloomberg.com/markets/news.rss",
+    "NYT":         "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+    "WSJ":         "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    "FT":          "https://www.ft.com/rss/home",
+    "Hacker News": "https://news.ycombinator.com/rss",
 }
 
-STOCK_SYMBOLS = ["SPY", "VOO", "JPM", "NVDA"]
+# BTC-USD goes through same Yahoo Finance path as equities
+STOCK_SYMBOLS = ["SPY", "VOO", "JPM", "NVDA", "BTC-USD"]
 
 KALSHI_BASE = "https://external-api.kalshi.com/trade-api/v2"
 KALSHI_SKIP = {"Sports"}
+KALSHI_TOP_N = 5
 
 
 @app.get("/api/ping")
@@ -43,59 +46,39 @@ def ping():
     }
 
 
-async def _fetch_stock(client: httpx.AsyncClient, symbol: str) -> tuple[str, dict]:
+async def _fetch_yahoo(client: httpx.AsyncClient, symbol: str) -> tuple[str, dict]:
     try:
         res = await client.get(
             f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
             params={"interval": "1d", "range": "1d"},
             headers={"User-Agent": "Mozilla/5.0"},
         )
-        data = res.json()
-        meta = data["chart"]["result"][0]["meta"]
+        meta = res.json()["chart"]["result"][0]["meta"]
         price = meta.get("regularMarketPrice") or meta.get("previousClose")
         prev  = meta.get("chartPreviousClose") or meta.get("previousClose")
         change_pct = round((price - prev) / prev * 100, 2) if prev else 0
-        return symbol, {"price": round(price, 2), "change_pct": change_pct}
+        # Round BTC to nearest dollar, equities to 2dp
+        decimals = 0 if symbol == "BTC-USD" else 2
+        display_key = "BTC" if symbol == "BTC-USD" else symbol
+        return display_key, {"price": round(price, decimals), "change_pct": change_pct}
     except Exception:
-        return symbol, {"price": None, "change_pct": None, "error": "unavailable"}
-
-
-async def _fetch_btc(client: httpx.AsyncClient) -> dict:
-    try:
-        res = await client.get(
-            "https://api.crypto.com/exchange/v1/public/get-ticker",
-            params={"instrument_name": "BTC_USDT"},
-        )
-        raw = res.json()["result"]["data"]
-        ticker = raw[0] if isinstance(raw, list) else raw
-        # 'a' = best ask, 'c' = 24h absolute change
-        price = float(ticker.get("a") or ticker.get("k") or 0)
-        change_abs = float(ticker.get("c") or 0)
-        prev = price - change_abs
-        change_pct = round(change_abs / prev * 100, 2) if prev else 0
-        return {"price": round(price, 0), "change_pct": change_pct}
-    except Exception:
-        return {"price": None, "change_pct": None, "error": "unavailable"}
+        display_key = "BTC" if symbol == "BTC-USD" else symbol
+        return display_key, {"price": None, "change_pct": None, "error": "unavailable"}
 
 
 @app.get("/api/tickers")
 async def tickers():
-    results = {}
     async with httpx.AsyncClient(timeout=8) as client:
-        stock_tasks = [_fetch_stock(client, sym) for sym in STOCK_SYMBOLS]
-        btc_task    = _fetch_btc(client)
-        *stock_results, btc = await asyncio.gather(*stock_tasks, btc_task)
-
-    for symbol, data in stock_results:
-        results[symbol] = data
-    results["BTC"] = btc
-
-    return {"tickers": results, "timestamp": datetime.now(timezone.utc).isoformat()}
+        results_list = await asyncio.gather(
+            *[_fetch_yahoo(client, sym) for sym in STOCK_SYMBOLS]
+        )
+    return {
+        "tickers":   dict(results_list),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
-async def _kalshi_events(client: httpx.AsyncClient) -> list[str]:
-    """Fetch open non-sports series tickers."""
-    tickers = []
+async def _kalshi_series(client: httpx.AsyncClient) -> list[str]:
     try:
         r = await client.get(
             f"{KALSHI_BASE}/events",
@@ -104,48 +87,56 @@ async def _kalshi_events(client: httpx.AsyncClient) -> list[str]:
         )
         if r.status_code != 200:
             return []
-        for event in r.json().get("events", []):
-            if event.get("category") in KALSHI_SKIP:
-                continue
-            st = event.get("series_ticker")
-            if st:
-                tickers.append(st)
+        return [
+            e["series_ticker"]
+            for e in r.json().get("events", [])
+            if e.get("category") not in KALSHI_SKIP and e.get("series_ticker")
+        ]
     except Exception:
-        pass
-    return tickers
+        return []
 
 
 @app.get("/api/kalshi")
 async def kalshi():
-    markets = []
-    async with httpx.AsyncClient(timeout=12) as client:
-        series = await _kalshi_events(client)
+    all_markets = []
+    async with httpx.AsyncClient(timeout=15) as client:
+        series = await _kalshi_series(client)
 
-        for series_ticker in series[:8]:
-            if len(markets) >= 15:
-                break
+        async def fetch_series(st: str):
             try:
                 r = await client.get(
                     f"{KALSHI_BASE}/markets",
-                    params={"limit": 5, "status": "open", "series_ticker": series_ticker},
+                    params={"limit": 10, "status": "open", "series_ticker": st},
                     headers={"Accept": "application/json"},
                 )
                 if r.status_code != 200:
-                    continue
+                    return
                 for m in r.json().get("markets", []):
                     yes = m.get("yes_ask_dollars") or m.get("last_price_dollars")
                     if yes is None:
                         continue
-                    markets.append({
+                    liquidity = float(m.get("open_interest_fp") or m.get("volume_fp") or 0)
+                    all_markets.append({
                         "ticker":    m.get("ticker", ""),
                         "title":     m.get("title", ""),
                         "yes_price": round(float(yes), 2),
+                        "no_price":  round(1 - float(yes), 2),
+                        "liquidity": liquidity,
+                        "volume":    float(m.get("volume_fp") or 0),
                         "url":       f"https://kalshi.com/markets/{m.get('ticker', '')}",
                     })
             except Exception:
-                continue
+                pass
 
-    return {"markets": markets, "timestamp": datetime.now(timezone.utc).isoformat()}
+        await asyncio.gather(*[fetch_series(st) for st in series[:20]])
+
+    # Top N by liquidity
+    all_markets.sort(key=lambda m: m["liquidity"], reverse=True)
+    top = all_markets[:KALSHI_TOP_N]
+    for m in top:
+        del m["liquidity"]  # internal sort key, not needed by client
+
+    return {"markets": top, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/api/news")
@@ -164,19 +155,14 @@ async def news(limit: int = 60):
             for entry in feed.entries[:12]:
                 published = entry.get("published") or entry.get("updated", "")
 
-                # For HN, primary link goes to the HN discussion, not the article
                 if source == "Hacker News":
-                    hn_url     = entry.get("comments") or entry.get("link", "")
+                    primary_url = entry.get("comments") or entry.get("link", "")
                     article_url = entry.get("link", "")
-                    primary_url = hn_url if hn_url else article_url
                 else:
                     primary_url = entry.get("link", "")
                     article_url = primary_url
 
-                summary = entry.get("summary", "") or ""
-                # Strip HTML tags from summary
-                import re
-                summary = re.sub(r"<[^>]+>", "", summary)[:300]
+                summary = re.sub(r"<[^>]+>", "", entry.get("summary", "") or "")[:300]
 
                 articles.append({
                     "source":      source,
@@ -199,9 +185,8 @@ async def news(limit: int = 60):
             return datetime.min.replace(tzinfo=timezone.utc)
 
     articles.sort(key=sort_key, reverse=True)
-
     return {
-        "articles": articles[:limit],
-        "total":    len(articles),
+        "articles":  articles[:limit],
+        "total":     len(articles),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
