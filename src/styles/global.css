@@ -89,6 +89,12 @@ code, pre, .mono { font-family: var(--font-mono); }
   min-height: 3rem;
 }
 
+/* ── News card hover ───────────────────────────────────── */
+.news-card:hover {
+  border-color: var(--accent) !important;
+  background: var(--bg-elevated) !important;
+}
+
 /* ── Daily section cards ───────────────────────────────── */
 .daily-card {
   transition: border-color 0.15s, background 0.15s;

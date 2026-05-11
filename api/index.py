@@ -27,6 +27,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Per-source entry caps — academic feeds can drop 70+ papers at once
+SOURCE_LIMITS = {
+    "NBER":        5,
+    "JMLR":        5,
+    "arXiv q-fin": 6,
+    "arXiv econ":  6,
+}
+DEFAULT_SOURCE_LIMIT = 12
+
 RSS_FEEDS = {
     "Bloomberg":     "https://feeds.bloomberg.com/markets/news.rss",
     "NYT":           "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
@@ -220,7 +229,8 @@ async def news(limit: int = 60):
                     follow_redirects=True,
                 )
             feed = feedparser.parse(res.text)
-            for entry in feed.entries[:12]:
+            cap = SOURCE_LIMITS.get(source, DEFAULT_SOURCE_LIMIT)
+            for entry in feed.entries[:cap]:
                 published = entry.get("published") or entry.get("updated", "")
 
                 if source == "Hacker News":
@@ -230,7 +240,7 @@ async def news(limit: int = 60):
                     primary_url = entry.get("link", "")
                     article_url = primary_url
 
-                summary = re.sub(r"<[^>]+>", "", entry.get("summary", "") or "")[:300]
+                summary = re.sub(r"<[^>]+>", "", entry.get("summary", "") or "")[:1000]
 
                 articles.append({
                     "source":      source,
