@@ -9,6 +9,7 @@ import { DailySection } from './components/DailySection'
 import { NewsFeed } from './components/NewsFeed'
 import { PodcastFeed } from './components/PodcastFeed'
 import { SavedFeed } from './components/SavedFeed'
+import { MarketsFeed } from './components/MarketsFeed'
 import { StatusBar } from './components/StatusBar'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
   const tabs = [
     { id: 'news',     label: 'News' },
     { id: 'podcasts', label: 'Podcasts' },
+    { id: 'markets',  label: 'Markets' },
     { id: 'saved',    label: saved.length ? `Saved (${saved.length})` : 'Saved' },
   ]
 
@@ -34,6 +36,7 @@ export default function App() {
           <TabNav tabs={tabs} active={tab} onChange={setTab} />
           {tab === 'news'     && <NewsFeed onSave={save} isSaved={isSaved} />}
           {tab === 'podcasts' && <PodcastFeed onSave={save} />}
+          {tab === 'markets'  && <MarketsFeed />}
           {tab === 'saved'    && <SavedFeed saved={saved} unsave={unsave} isSaved={isSaved} onSave={save} />}
         </div>
       </main>
