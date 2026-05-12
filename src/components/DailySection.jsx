@@ -141,7 +141,6 @@ function WikiCard({ wiki }) {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
       }}>
         {wiki.thumbnail && (
           <div style={{ height: '160px', overflow: 'hidden', flexShrink: 0 }}>
