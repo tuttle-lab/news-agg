@@ -90,6 +90,10 @@ code, pre, .mono { font-family: var(--font-mono); }
 }
 
 /* ── News card hover ───────────────────────────────────── */
+.news-card {
+  height: 10rem;
+  overflow: hidden;
+}
 .news-card:hover {
   border-color: var(--accent) !important;
   background: var(--bg-elevated) !important;
@@ -97,6 +101,8 @@ code, pre, .mono { font-family: var(--font-mono); }
 
 /* ── Daily section cards ───────────────────────────────── */
 .daily-card {
+  height: 21rem;
+  overflow: hidden;
   transition: border-color 0.15s, background 0.15s;
 }
 .daily-card:hover {
