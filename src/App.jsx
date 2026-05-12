@@ -33,7 +33,7 @@ export default function App() {
         <div style={{ marginTop: tab === 'news' ? '1.25rem' : 0 }}>
           <TabNav tabs={tabs} active={tab} onChange={setTab} />
           {tab === 'news'     && <NewsFeed onSave={save} isSaved={isSaved} />}
-          {tab === 'podcasts' && <PodcastFeed />}
+          {tab === 'podcasts' && <PodcastFeed onSave={save} />}
           {tab === 'saved'    && <SavedFeed saved={saved} unsave={unsave} isSaved={isSaved} onSave={save} />}
         </div>
       </main>
