@@ -81,12 +81,12 @@ function EpisodeCard({ episode, show, onClick, onDismiss, onSave }) {
 
     if (!axis.current) {
       if (dist < MIN_TRAVEL) return
-      axis.current = Math.abs(dx) > Math.abs(dy) * HORIZ_RATIO ? 'h' : 'v'
+      axis.current   = Math.abs(dx) > Math.abs(dy) * HORIZ_RATIO ? 'h' : 'v'
+      tapped.current = false
     }
 
     if (axis.current === 'h') {
       e.preventDefault()
-      tapped.current = false
       setOffsetX(dx)
     }
   }
